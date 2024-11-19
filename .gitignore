@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+
+# Node.js
+node_modules/
+npm-debug.log 
+
+config
+encrypt.js
