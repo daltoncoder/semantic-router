@@ -1,4 +1,4 @@
-# Semantic Router
+# Index Semantic Router
 
 A trustless, privacy-preserving semantic routing agent that processes and evaluates content updates using LLM providers. Built with end-to-end TEE (Trusted Execution Environment) architecture for complete operational blindness - no one, including the operators, can see what's being processed or who is using it.
 
@@ -10,29 +10,10 @@ A trustless, privacy-preserving semantic routing agent that processes and evalua
   - [OpenGradient](https://opengradient.ai/) for private LLM inference
   - [Fleek](https://fleek.network/) for secure TEE-based decentralized runtime
   - IPFS for decentralized prompt storage
-- Completely blind operation - no visibility into prompts or users
-- Decentralized LLM provider support ( OpenGradient)
-- Secure configuration management using Lit Protocol
-- Customizable semantic evaluation based on prompts
-- Robust error handling and automatic reconnection
-- Configurable filtering criteria
 - Multiple data source integrations:
   - Farcaster
   - Lu.ma (coming soon)
   - Paragraph.xyz (coming soon)
-
-## Architecture
-
-The system operates entirely within TEEs (Trusted Execution Environments):
-- Configuration and key management runs in Lit Protocol's TEE network
-- LLM inference executed privately in OpenGradient's secure enclaves
-- Agent runtime executed in Fleek's TEE infrastructure for secure computation
-
-This architecture ensures that no single party, including the system operators, can access or view:
-- User identities
-- Submitted prompts
-- Processing results
-- Runtime operations
 
 ## Prerequisites
 
@@ -45,7 +26,17 @@ This architecture ensures that no single party, including the system operators, 
 
 ## Installation
 
-### Using Docker (Recommended)
+### Using Pre-built Image
+
+1. Pull and run the official Docker image:
+```bash
+docker pull indexnetwork/semantic-router:0.0.1
+docker run -p 8000:8000 --env LISTENER_CONFIG="<YOUR_CONFIG>" indexnetwork/semantic-router:0.0.1
+```
+
+> **Note**: Contact hello@index.network for testing purposes to obtain the LISTENER_CONFIG value. Do not share this configuration directly.
+
+### Using Docker (Build from Source)
 
 1. Clone the repository:
 ```bash
