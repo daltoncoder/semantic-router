@@ -30,11 +30,11 @@ A trustless, privacy-preserving semantic routing agent that processes and evalua
 
 1. Pull and run the official Docker image:
 ```bash
-docker pull indexnetwork/semantic-router:0.0.1
-docker run -p 8000:8000 --env LISTENER_CONFIG="<YOUR_CONFIG>" indexnetwork/semantic-router:0.0.1
+docker pull indexnetwork/semantic-router:0.0.2
+docker run -p 8000:8000 --env ROUTER_CONFIG="<YOUR_CONFIG>" indexnetwork/semantic-router:0.0.2
 ```
 
-> **Note**: Contact hello@index.network for testing purposes to obtain the LISTENER_CONFIG value. Do not share this configuration directly.
+> **Note**: Contact hello@index.network for testing purposes to obtain the ROUTER_CONFIG value. Do not share this configuration directly.
 
 ### Using Docker (Build from Source)
 

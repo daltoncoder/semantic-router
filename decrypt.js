@@ -12,11 +12,11 @@ import { promises as fs } from "fs";
 
 
 export const runExample = async (base64Params) => {
-  // Check if base64Params is provided, otherwise fallback to process.env.LISTENER_CONFIG
-  const base64String = base64Params || process.env.LISTENER_CONFIG;
+  // Check if base64Params is provided, otherwise fallback to process.env.ROUTER_CONFIG
+  const base64String = base64Params || process.env.ROUTER_CONFIG;
   
   if (!base64String) {
-    throw new Error('No configuration provided: LISTENER_CONFIG environment variable or base64Params parameter is required');
+    throw new Error('No configuration provided: ROUTER_CONFIG environment variable or base64Params parameter is required');
   }
 
   // Decode base64 parameters

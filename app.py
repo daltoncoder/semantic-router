@@ -113,7 +113,7 @@ class LLMProvider:
 
 class UpdateProcessor:
     def __init__(self):
-        self.active_listeners = {}
+        self.active_routers = {}
         self.llm_provider = LLMProvider()
 
     def evaluate_update(self, prompt: str, update: Dict[str, Any]) -> Dict[str, Any]:
@@ -204,7 +204,7 @@ og.init(email=Config.OG_EMAIL, password=Config.OG_PASSWORD, private_key=Config.O
 update_queue = queue.Queue()
 
 @dataclass
-class ListenerConfig:
+class RouterConfig:
     prompt: str
     queue: queue.Queue
     created_at: datetime
@@ -223,19 +223,19 @@ def process_update(updated_item: Dict[str, Any]) -> None:
         cast['link'] = f"https://warpcast.com/{cast['author']['username']}/{cast['hash'][:12]}"
         cast['channel_id'] = updated_item.get('data', {}).get('channel', {}).get('id')
 
-        logger.info(f"Active listeners: {list(processor.active_listeners.keys())}")
-        for prompt, listener_config in processor.active_listeners.items():
+        logger.info(f"Active routers: {list(processor.active_routers.keys())}")
+        for prompt, router_config in processor.active_routers.items():
             logger.info(f"Processing for prompt: {prompt[:100]}")
             try:
-                result = processor.evaluate_update(listener_config.prompt, cast)
+                result = processor.evaluate_update(router_config.prompt, cast)
                 logger.info(f"Evaluation result: {json.dumps(result, indent=2)}")
                 
 
                 result['item'] = updated_item
                 
-                # If recommended, add to queue for listeners
+                # If recommended, add to queue for routers
                 if result['decision'] == 'recommend':
-                    listener_config.queue.put(result)
+                    router_config.queue.put(result)
                     logger.info(f"Added recommended update to queue for prompt: {prompt[:100]}")
                 
             except Exception as e:
@@ -244,9 +244,9 @@ def process_update(updated_item: Dict[str, Any]) -> None:
     except Exception as e:
         logger.error(f"Error processing update: {str(e)}", exc_info=True)
 
-def listener_thread(url: str):
-    """Separated listener thread function with robust error handling and backoff"""
-    logger.info(f"Starting SSE listener thread with URL: {url}")
+def router_thread(url: str):
+    """Separated router thread function with robust error handling and backoff"""
+    logger.info(f"Starting SSE router thread with URL: {url}")
     retry_count = 0
     max_retries = 5
     base_delay = 5  # Base delay in seconds
@@ -325,14 +325,14 @@ def listener_thread(url: str):
                 
             time.sleep(delay)  # Wait before retrying
 
-def start_listener():
-    """Start the SSE listener in a separate thread."""
-    logger.info("Initializing SSE listener")
+def start_router():
+    """Start the SSE router in a separate thread."""
+    logger.info("Initializing SSE router")
     
     # Use Config variables instead of hardcoded values
     url = f"{Config.BASE_URL}/discovery/updates?sources[]={Config.SOURCE}"
     
-    thread = threading.Thread(target=listener_thread, args=(url,), daemon=True)
+    thread = threading.Thread(target=router_thread, args=(url,), daemon=True)
     thread.start()
     return thread
 
@@ -346,21 +346,21 @@ def get_updates():
     if not prompt:
         return Response("Missing 'prompt' parameter", status=400)
 
-    # Create new listener configuration if doesn't exist
-    if prompt not in processor.active_listeners:
-        processor.active_listeners[prompt] = ListenerConfig(
+    # Create new router configuration if doesn't exist
+    if prompt not in processor.active_routers:
+        processor.active_routers[prompt] = RouterConfig(
             prompt=prompt,
             queue=queue.Queue(),
             created_at=datetime.now()
         )
     
-    listener_config = processor.active_listeners[prompt]
+    router_config = processor.active_routers[prompt]
 
     def generate():
         while True:
             try:
                 # Get update from queue specific to this prompt, timeout after 30 seconds
-                update = listener_config.queue.get()
+                update = router_config.queue.get()
                 yield f"data: {json.dumps(update)}\n\n"
             except queue.Empty:
                 # Send keepalive
@@ -379,9 +379,9 @@ def get_updates():
     )
 
 if __name__ == '__main__':
-    # Start the listener when the app starts
+    # Start the router when the app starts
 
-    listener_thread = start_listener()
+    router_thread = start_router()
     
     # Run the Flask app
     app.run(host='0.0.0.0', port=8000) 
