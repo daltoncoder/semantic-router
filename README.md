@@ -2,6 +2,9 @@
 
 A trustless, privacy-preserving semantic routing agent that processes and evaluates content updates using LLM providers. Built with end-to-end TEE (Trusted Execution Environment) architecture for complete operational blindness - no one, including the operators, can see what's being processed or who is using it.
 
+<img width="1995" alt="router-1" src="https://github.com/user-attachments/assets/5e8cc74a-72c4-4c1c-8cca-f4b03135130e">
+
+
 ## Features
 
 - Real-time content filtering using Server-Sent Events (SSE)
