@@ -16,6 +16,13 @@ import requests
 from vertexai.preview.generative_models import GenerativeModel
 import vertexai
 
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import ObjectIdentifier
+
 # Configure logging with more detailed setup
 logging.basicConfig(
     level=logging.INFO,
@@ -378,10 +385,121 @@ def get_updates():
         }
     )
 
+def create_self_signed_cert_with_ra_tls():
+    """
+    Create a self-signed X.509 certificate with a custom OID extension of ra-tls and save to disk
+    """
+    # Generate private key
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048
+    )
+
+    # Define a custom OID
+    # Format is (root OID).(sub OID)
+    # This is an example custom OID - replace with your specific OID
+    CUSTOM_OID = ObjectIdentifier("1.1.1.1.1.1.69696.1.1")
+
+    # Prepare subject and issuer (self-signed, so they're the same)
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"New York"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, u"NYC"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Fleek"),
+        x509.NameAttribute(NameOID.COMMON_NAME, u"fleek.xyz"),
+    ])
+
+    # Create the certificate
+    cert = x509.CertificateBuilder().subject_name(
+        subject
+    ).issuer_name(
+        issuer
+    ).public_key(
+        private_key.public_key()
+    ).serial_number(
+        x509.random_serial_number()
+    ).not_valid_before(
+        datetime.utcnow()
+    ).not_valid_after(
+        datetime.utcnow() + timedelta(days=365)
+    ).add_extension(
+        # Add custom OID extension with some arbitrary value
+        x509.UnrecognizedExtension(CUSTOM_OID, get_ra_quote(private_key)),
+        critical=False  # Set to True if this extension is critical
+    ).sign(
+        private_key, 
+        hashes.SHA256()
+    )
+
+    save_certificate_and_key(private_key, cert)
+
+def get_ra_quote(private_key):
+    """
+    Perform attestation I/O operations:
+    1. Write user report data to /dev/attestation/user_report_data
+    2. Read quote from /dev/attestation/quote
+
+    Args:
+        private_key (private_key): private key of SSL cert so we can write public key to userdata
+
+    Returns:
+        bytes: Quote read from /dev/attestation/quote
+    """
+    try:
+        # Virtual files provided by TEE to attestation files
+        USER_REPORT_PATH = "/dev/attestation/user_report_data"
+        QUOTE_PATH = "/dev/attestation/quote"
+
+        # Extract the public key from the private key
+        public_key = private_key.public_key()
+        der_public_key = public_key.public_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
+        # Writing to this virtual file will add the public to the SGX Quote so we can verify we are talking to the right server
+        with open(USER_REPORT_PATH, "wb") as user_report_file:
+            user_report_file.write(der_public_key)
+            print(f"Successfully wrote public key to user_report_data")
+
+        # Read quote
+        with open(QUOTE_PATH, "rb") as quote_file:
+            quote_data = quote_file.read()
+            print(f"Successfully read {len(quote_data)} bytes from {QUOTE_PATH}")
+            return quote_data
+
+    except IOError as e:
+        print(f"This does not appear to be running in a TEE")
+        return None
+    
+
+def save_certificate_and_key(private_key, cert):
+    """
+    Save the private key and certificate to files
+    
+    Args:
+        private_key (RSAPrivateKey): Private key to save
+        cert (Certificate): Certificate to save
+    """
+    # Save private key
+    with open("private_key.pem", "wb") as key_file:
+        key_file.write(private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+
+    # Save certificate
+    with open("certificate.pem", "wb") as cert_file:
+        cert_file.write(cert.public_bytes(serialization.Encoding.PEM))
+
+
 if __name__ == '__main__':
     # Start the router when the app starts
 
     router_thread = start_router()
     
+    create_self_signed_cert_with_ra_tls()
+    
     # Run the Flask app
-    app.run(host='0.0.0.0', port=8000) 
+    app.run(host='0.0.0.0', port=8000, ssl_context=("certificate.pem","private_key.pem"))

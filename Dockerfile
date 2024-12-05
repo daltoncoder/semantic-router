@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y curl \
 # Set working directory
 WORKDIR /app
 
+# Python fix so logs will print from enclave
+ENV PYTHONUNBUFFERED
+
 # Copy requirements and package.json
 COPY requirements.txt package.json ./
 
